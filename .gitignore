@@ -116,3 +116,5 @@ all.config
 # dtb objects
 *.dtb
 *.dtbo
+
+/fs/aufs/conf.str*
