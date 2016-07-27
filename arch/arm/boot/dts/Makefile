@@ -430,6 +430,7 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-arduino-tre.dtb \
 	am335x-boneblack-overlay.dtb \
 	am335x-bonegreen.dtb \
+	am335x-sagv-v2.dtb \
 	am335x-evm.dtb \
 	am335x-evmsk.dtb \
 	am335x-nano.dtb \
