@@ -1,0 +1,12 @@
+#
+# FPGA framework configuration
+#
+
+menu "AGV FPGA Support"
+
+config AGV_FPGA
+	tristate "AGV FPGA Support"
+	help
+	  AGV FPGA Support
+
+endmenu

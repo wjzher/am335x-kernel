@@ -44,6 +44,15 @@
 		};
 #endif
 	};
+	agv_fpga {
+		compatible = "agv-fpga";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&agv_fpga_pins>;
+
+		int-gpios = <&gpio1 8 0x00>;
+		reset-gpios = <&gpio1 9 0x00>;
+	};
 };
 
 &ldo3_reg {
@@ -286,6 +295,10 @@
 	gpio_helper_pins: pinmux_gpio_helper_pins {
 		pinctrl-single,pins = <
 			0xe4 (PIN_OUTPUT | MUX_MODE7)	/* LCD_HSYNC GPIO2[23], OUTPUT | MODE7 --> USER LED */
+		>;
+	};
+	agv_fpga_pins: pinmux_agv_fpga_pins {
+		pinctrl-single,pins = <
 			0x168 (PIN_INPUT_PULLUP | MUX_MODE7)	/* UART0_CTSN GPIO1[8], INPUT | MODE7 --> FPGA INT */
 			0x16C (PIN_OUTPUT | MUX_MODE7)	/* UART0_RTSN GPIO1[9], OUTPUT | MODE7 --> FPGA RST */
 		>;
