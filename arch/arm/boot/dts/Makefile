@@ -483,6 +483,7 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-boneblack-nhdmi-overlay.dtb \
 	am335x-boneblack-hdmi-overlay.dtb \
 	am335x-boneblack-emmc-overlay.dtb \
+	am335x-boneblack-lcd7-overlay.dtb \
 	am335x-bonegreen.dtb \
 	am335x-sl50.dtb \
 	am335x-evm.dtb \
