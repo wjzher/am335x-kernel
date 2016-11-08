@@ -103,6 +103,10 @@
 	status = "okay";
 };
 
+&elm {
+	status = "okay";
+};
+
 &gpmc {
 	status = "okay";
 	pinctrl-names = "default";
