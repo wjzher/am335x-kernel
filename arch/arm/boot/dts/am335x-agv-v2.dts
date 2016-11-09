@@ -9,6 +9,8 @@
 
 #include "am33xx.dtsi"
 #include "am33xx-es2.dtsi"
+
+
 #include "am335x-agv-common.dtsi"
 
 / {
@@ -23,31 +25,24 @@
 
 		led@2 {
 			label = "beaglebone:green:usr0";
-			gpios = <&gpio2 10 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio2 23 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "heartbeat";
 			default-state = "off";
 		};
 
 		led@3 {
 			label = "beaglebone:green:usr1";
-			gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio2 22 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "mmc0";
 			default-state = "off";
 		};
 
 		led@4 {
 			label = "beaglebone:green:usr2";
-			gpios = <&gpio2 12 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "cpu0";
 			default-state = "off";
 		};
-
-		/* led@5 {
-			label = "beaglebone:green:usr3";
-			gpios = <&gpio1 24 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "mmc1";
-			default-state = "off";
-		}; */
 	};
 	
 	gpio_helper {
@@ -57,23 +52,49 @@
 		pinctrl-0 = <&gpio_helper_pins>;
 
 		/* declare your gpios */
-		test_led {
-			gpio-name = "test_led";
-			gpio = <&gpio2 13 0x00>;	/* gpio2 13, active_low = 0 */
+		io_in0 {
+			gpio-name = "io_in0";
+			gpio = <&gpio1 8 GPIO_ACTIVE_LOW>;
+			input;
+		};
+		io_in1 {
+			gpio-name = "io_in1";
+			gpio = <&gpio1 9 GPIO_ACTIVE_LOW>;
+			input;
+		};
+		io_in2 {
+			gpio-name = "io_in2";
+			gpio = <&gpio0 12 GPIO_ACTIVE_LOW>;
+			input;
+		};
+		io_in3 {
+			gpio-name = "io_in3";
+			gpio = <&gpio0 13 GPIO_ACTIVE_LOW>;
+			input;
+		};
+		io_out0 {
+			gpio-name = "io_out0";
+			gpio = <&gpio3 15 GPIO_ACTIVE_LOW>;
 			output;
 			init-high;
 		};
-		fpga_reseta {
-			gpio-name = "fpga_reset_a";
-			gpio = <&gpio1 16 GPIO_ACTIVE_HIGH>;
+		io_out1 {
+			gpio-name = "io_out1";
+			gpio = <&gpio3 16 GPIO_ACTIVE_LOW>;
 			output;
-			init-low;
+			init-high;
 		};
-		fpga_resetb {
-			gpio-name = "fpga_reset_b";
-			gpio = <&gpio1 20 GPIO_ACTIVE_HIGH>;
+		io_out2 {
+			gpio-name = "io_out2";
+			gpio = <&gpio3 17 GPIO_ACTIVE_LOW>;
 			output;
-			init-low;
+			init-high;
+		};
+		io_out3 {
+			gpio-name = "io_out3";
+			gpio = <&gpio3 19 GPIO_ACTIVE_LOW>;
+			output;
+			init-high;
 		};
 	};
 };
@@ -86,12 +107,6 @@
 
 &mmc1 {
 	vmmc-supply = <&vmmcsd_fixed>;
-	status = "okay";
-	bus-width = <0x4>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&mmc1_pins>;
-	cd-gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;
-	cd-inverted;
 };
 
 &uart1 {
@@ -100,70 +115,20 @@
 	status = "okay";
 };
 
-&uart4 {
+&uart2 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart4_pins>;
+	pinctrl-0 = <&uart2_pins>;
 	status = "okay";
 };
 
-&uart5 {
+&uart3 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart5_pins>;
+	pinctrl-0 = <&uart3_pins>;
 	status = "okay";
-	rts-gpio = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+	rts-gpio = <&gpio3 18 GPIO_ACTIVE_HIGH>;
 	rs485-rts-active-high;
 	rs485-rts-delay = <0 0>;
 	linux,rs485-enabled-at-boot-time;
-};
-
-&dcan0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&dcan0_pins>;
-	status = "okay";
-};
-
-&usb {
-	status = "okay";
-};
-
-&usb_ctrl_mod {
-	status = "okay";
-};
-
-&usb0 {
-	status = "okay";
-	dr_mode = "peripheral";
-};
-
-&usb0_phy {
-	status = "okay";
-};
-
-&spi0 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&bb_spi0_pins>;
-	ti,pio-mode; /* disable dma when used as an overlay, dma gets stuck at 160 bits... */
-
-	channel@0 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		compatible = "spidev";
-
-		reg = <0>;
-		spi-max-frequency = <24000000>;
-	};
-
-	channel@1 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		compatible = "spidev";
-
-		reg = <1>;
-		spi-max-frequency = <24000000>;
-	};
 };
 
 &elm {
@@ -174,8 +139,7 @@
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&gpmc_pins>;
-	ranges = <0 0 0x08000000 0x1000000>,	/* CS0: 16MB for NAND */
-			 <1 0 0x10000000 0x1000000>;	/* CS1: 16MB for fpga */
+	ranges = <0 0 0x08000000 0x1000000>;	/* CS0: 16MB for NAND */
 	nand@0,0 {
 		reg = <0 0 4>; /* CS0, offset 0, IO size 4 */
 		ti,nand-ecc-opt = "bch8";
@@ -257,9 +221,9 @@
 &am33xx_pinmux {
 	user_leds_s0: user_leds_s0 {
 		pinctrl-single,pins = <
-			AM33XX_IOPAD(0x8B0, PIN_OUTPUT | MUX_MODE7)	/* gpio2_10 */
-			AM33XX_IOPAD(0x8B4, PIN_OUTPUT | MUX_MODE7)	/* gpio2_11 */
-			AM33XX_IOPAD(0x8B8, PIN_OUTPUT | MUX_MODE7)	/* gpio2_12 */
+			AM33XX_IOPAD(0x8E4, PIN_OUTPUT | MUX_MODE7)	/* gpio2_23 */
+			AM33XX_IOPAD(0x8E0, PIN_OUTPUT | MUX_MODE7)	/* gpio2_22 */
+			AM33XX_IOPAD(0x8EC, PIN_OUTPUT | MUX_MODE7)	/* gpio2_25 */
 		>;
 	};
 	uart1_pins: pinmux_uart1_pins {
@@ -270,30 +234,22 @@
 			AM33XX_IOPAD(0x980, PIN_INPUT_PULLUP | MUX_MODE0)
 		>;
 	};
-	uart4_pins: pinmux_uart4_pins {
+	uart2_pins: pinmux_uart2_pins {
 		pinctrl-single,pins = <
-			/* uart0_rts.uart2_txd */
-			AM33XX_IOPAD(0x96c, PIN_OUTPUT_PULLDOWN | MUX_MODE1)
-			/* uart0_cts.uart2_rxd */
-			AM33XX_IOPAD(0x968, PIN_INPUT_PULLUP | MUX_MODE1)
+			/* spi0_d0.uart2_txd */
+			AM33XX_IOPAD(0x954, PIN_OUTPUT_PULLDOWN | MUX_MODE1)
+			/* spi0_clk.uart2_rxd */
+			AM33XX_IOPAD(0x950, PIN_INPUT_PULLUP | MUX_MODE1)
 		>;
 	};
-	uart5_pins: pinmux_uart5_pins {
+	uart3_pins: pinmux_uart3_pins {
 		pinctrl-single,pins = <
-			/* lcd_d8.uart5_txd */
-			AM33XX_IOPAD(0x8C0, PIN_OUTPUT_PULLDOWN | MUX_MODE4)
-			/* lcd_d9.uart5_rxd */
-			AM33XX_IOPAD(0x8C4, PIN_INPUT_PULLUP | MUX_MODE4)
-			/* mcasp0_aclkr GPIO0[11], OUTPUT_PULLDOWN | MODE7 --> UART5_DE */
-			AM33XX_IOPAD(0x8DC, PIN_OUTPUT_PULLDOWN | MUX_MODE7)
-		>;
-	};
-	dcan0_pins: pinmux_dcan0_pins {
-		pinctrl-single,pins = <
-			/* uart1_ctsn.d_can0_tx */
-			AM33XX_IOPAD(0x978, PIN_OUTPUT_PULLUP | MUX_MODE2)
-			/* uart1_rtsn.d_can0_rx */
-			AM33XX_IOPAD(0x97C, PIN_INPUT_PULLUP | MUX_MODE2)
+			/* lcd_enbkl(eCAP0_in_PWM0_out).uart3_txd */
+			AM33XX_IOPAD(0x964, PIN_OUTPUT_PULLDOWN | MUX_MODE1)
+			/* spi0_cs1.uart3_rxd */
+			AM33XX_IOPAD(0x960, PIN_INPUT_PULLUP | MUX_MODE1)
+			/* mcasp0_aclkr GPIO3[18], OUTPUT_PULLDOWN | MODE7 --> UART3_DE */
+			AM33XX_IOPAD(0x9A0, PIN_OUTPUT_PULLDOWN | MUX_MODE7)
 		>;
 	};
 	gpmc_pins: pinmux_gpmc_pins {
@@ -317,24 +273,14 @@
 	};
 	gpio_helper_pins: pinmux_gpio_helper_pins {
 		pinctrl-single,pins = <
-			AM33XX_IOPAD(0X8BC, PIN_OUTPUT | MUX_MODE7)	/* LCD_D7 GPIO2[13], OUTPUT | MODE7 --> USER LED */
-			AM33XX_IOPAD(0X840, PIN_OUTPUT | MUX_MODE7)	/* GPIO1[16], OUTPUT | MODE7 --> */
-			AM33XX_IOPAD(0X850, PIN_OUTPUT | MUX_MODE7)	/* GPIO1[20], OUTPUT | MODE7 --> */
-		>;
-	};
-	mmc1_pins: pinmux_mmc1_pins {
-		pinctrl-single,pins = <
-			AM33XX_IOPAD(0x9A4, PIN_INPUT | MUX_MODE7) /* GPIO3_19 */
-		>;
-	};
-	/* default state has all gpios released and mode set to uart1 */
-	bb_spi0_pins: pinmux_bb_spi0_pins {
-		pinctrl-single,pins = <
-			0x150 0x30	/* spi0_sclk.spi0_sclk, INPUT_PULLUP | MODE0 */
-			0x154 0x30	/* spi0_d0.spi0_d0, INPUT_PULLUP | MODE0 */
-			0x158 0x10	/* spi0_d1.spi0_d1, OUTPUT_PULLUP | MODE0 */
-			0x15c 0x10	/* spi0_cs0.spi0_cs0, OUTPUT_PULLUP | MODE0 */
-			0x160 0x10	/* spi0_cs0.spi0_cs0, OUTPUT_PULLUP | MODE0 */
+			AM33XX_IOPAD(0x968, PIN_INPUT | MUX_MODE7)
+			AM33XX_IOPAD(0x96C, PIN_INPUT | MUX_MODE7)
+			AM33XX_IOPAD(0x978, PIN_INPUT | MUX_MODE7)
+			AM33XX_IOPAD(0x97C, PIN_INPUT | MUX_MODE7)
+			AM33XX_IOPAD(0x994, PIN_OUTPUT | MUX_MODE7)
+			AM33XX_IOPAD(0x998, PIN_OUTPUT | MUX_MODE7)
+			AM33XX_IOPAD(0x99C, PIN_OUTPUT | MUX_MODE7)
+			AM33XX_IOPAD(0x9A4, PIN_OUTPUT | MUX_MODE7)
 		>;
 	};
 };
