@@ -1,0 +1,340 @@
+/*
+ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+/dts-v1/;
+
+#include "am33xx.dtsi"
+#include "am33xx-es2.dtsi"
+#include "am335x-agv-common.dtsi"
+
+/ {
+	model = "TI AM335x AGV";
+	compatible = "ti,am335x-agv", "ti,am33xx";
+	
+	leds {
+		pinctrl-names = "default";
+		pinctrl-0 = <&user_leds_s0>;
+
+		compatible = "gpio-leds";
+
+		led@2 {
+			label = "beaglebone:green:usr0";
+			gpios = <&gpio2 10 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "heartbeat";
+			default-state = "off";
+		};
+
+		led@3 {
+			label = "beaglebone:green:usr1";
+			gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "mmc0";
+			default-state = "off";
+		};
+
+		led@4 {
+			label = "beaglebone:green:usr2";
+			gpios = <&gpio2 12 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "cpu0";
+			default-state = "off";
+		};
+
+		/* led@5 {
+			label = "beaglebone:green:usr3";
+			gpios = <&gpio1 24 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "mmc1";
+			default-state = "off";
+		}; */
+	};
+	
+	gpio_helper {
+		compatible = "gpio-of-helper";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_helper_pins>;
+
+		/* declare your gpios */
+		test_led {
+			gpio-name = "test_led";
+			gpio = <&gpio2 13 0x00>;	/* gpio2 13, active_low = 0 */
+			output;
+			init-high;
+		};
+		fpga_reseta {
+			gpio-name = "fpga_reset_a";
+			gpio = <&gpio1 16 GPIO_ACTIVE_HIGH>;
+			output;
+			init-low;
+		};
+		fpga_resetb {
+			gpio-name = "fpga_reset_b";
+			gpio = <&gpio1 20 GPIO_ACTIVE_HIGH>;
+			output;
+			init-low;
+		};
+	};
+};
+
+&ldo3_reg {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+};
+
+&mmc1 {
+	vmmc-supply = <&vmmcsd_fixed>;
+	status = "okay";
+	bus-width = <0x4>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc1_pins>;
+	cd-gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;
+	cd-inverted;
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart1_pins>;
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_pins>;
+	status = "okay";
+};
+
+&uart5 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart5_pins>;
+	status = "okay";
+	rts-gpio = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+	rs485-rts-active-high;
+	rs485-rts-delay = <0 0>;
+	linux,rs485-enabled-at-boot-time;
+};
+
+&dcan0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dcan0_pins>;
+	status = "okay";
+};
+
+&usb {
+	status = "okay";
+};
+
+&usb_ctrl_mod {
+	status = "okay";
+};
+
+&usb0 {
+	status = "okay";
+	dr_mode = "peripheral";
+};
+
+&usb0_phy {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&bb_spi0_pins>;
+	ti,pio-mode; /* disable dma when used as an overlay, dma gets stuck at 160 bits... */
+
+	channel@0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		compatible = "spidev";
+
+		reg = <0>;
+		spi-max-frequency = <24000000>;
+	};
+
+	channel@1 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		compatible = "spidev";
+
+		reg = <1>;
+		spi-max-frequency = <24000000>;
+	};
+};
+
+&elm {
+	status = "okay";
+};
+
+&gpmc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&gpmc_pins>;
+	ranges = <0 0 0x08000000 0x1000000>,	/* CS0: 16MB for NAND */
+			 <1 0 0x10000000 0x1000000>;	/* CS1: 16MB for fpga */
+	nand@0,0 {
+		reg = <0 0 4>; /* CS0, offset 0, IO size 4 */
+		ti,nand-ecc-opt = "bch8";
+		ti,elm-id = <&elm>;
+		nand-bus-width = <8>;
+		gpmc,device-width = <1>;
+		gpmc,sync-clk-ps = <0>;
+		gpmc,cs-on-ns = <0>;
+		gpmc,cs-rd-off-ns = <170>;
+		gpmc,cs-wr-off-ns = <170>;
+		gpmc,adv-on-ns = <50>;
+		gpmc,adv-rd-off-ns = <120>;
+		gpmc,adv-wr-off-ns = <120>;
+		gpmc,we-on-ns = <0>;
+		gpmc,we-off-ns = <90>;
+		gpmc,oe-on-ns = <0>;
+		gpmc,oe-off-ns = <90>;
+		gpmc,access-ns = <90>;
+		gpmc,rd-cycle-ns = <150>;
+		gpmc,wr-cycle-ns = <150>;
+		gpmc,wait-on-read = "true";
+		gpmc,wait-on-write = "true";
+		gpmc,bus-turnaround-ns = <0>;
+		gpmc,cycle2cycle-delay-ns = <0>;
+		gpmc,clk-activation-ns = <0>;
+		gpmc,wait-monitoring-ns = <0>;
+		gpmc,wr-access-ns = <100>;
+		gpmc,wr-data-mux-bus-ns = <0>;
+		/* gpmc,device-nand = "true"; */
+		/* MTD partition table */
+		/* All SPL-* partitions are sized to minimal length
+		 * which can be independently programmable. For
+		 * NAND flash this is equal to size of erase-block */
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@0 {
+			label = "NAND.SPL";
+			reg = <0x00000000 0x000020000>;		/* offset, size */
+		};
+		partition@1 {
+			label = "NAND.SPL.backup1";
+			reg = <0x00020000 0x00020000>;
+		};
+		partition@2 {
+			label = "NAND.SPL.backup2";
+			reg = <0x00040000 0x00020000>;
+		};
+		partition@3 {
+			label = "NAND.SPL.backup3";
+			reg = <0x00060000 0x00020000>;
+		};
+		partition@4 {
+			label = "NAND.u-boot-spl-os";
+			reg = <0x00080000 0x00040000>;
+		};
+		partition@5 {
+			label = "NAND.u-boot";
+			reg = <0x000C0000 0x00100000>;
+		};
+		partition@6 {
+			label = "NAND.u-boot-env";
+			reg = <0x001C0000 0x00020000>;
+		};
+		partition@7 {
+			label = "NAND.u-boot-env.backup1";
+			reg = <0x001E0000 0x00020000>;
+		};
+		partition@8 {
+			label = "NAND.kernel";
+			reg = <0x00200000 0x00800000>;
+		};
+		partition@9 {
+			label = "NAND.file-system";
+			reg = <0x00A00000 0x0F600000>;
+		};
+	};
+};
+
+&am33xx_pinmux {
+	user_leds_s0: user_leds_s0 {
+		pinctrl-single,pins = <
+			AM33XX_IOPAD(0x8B0, PIN_OUTPUT | MUX_MODE7)	/* gpio2_10 */
+			AM33XX_IOPAD(0x8B4, PIN_OUTPUT | MUX_MODE7)	/* gpio2_11 */
+			AM33XX_IOPAD(0x8B8, PIN_OUTPUT | MUX_MODE7)	/* gpio2_12 */
+		>;
+	};
+	uart1_pins: pinmux_uart1_pins {
+		pinctrl-single,pins = <
+			/* uart1_txd.uart1_txd */
+			AM33XX_IOPAD(0x984, PIN_OUTPUT_PULLDOWN | MUX_MODE0)
+			/* uart1_rxd.uart1_rxd */
+			AM33XX_IOPAD(0x980, PIN_INPUT_PULLUP | MUX_MODE0)
+		>;
+	};
+	uart4_pins: pinmux_uart4_pins {
+		pinctrl-single,pins = <
+			/* uart0_rts.uart2_txd */
+			AM33XX_IOPAD(0x96c, PIN_OUTPUT_PULLDOWN | MUX_MODE1)
+			/* uart0_cts.uart2_rxd */
+			AM33XX_IOPAD(0x968, PIN_INPUT_PULLUP | MUX_MODE1)
+		>;
+	};
+	uart5_pins: pinmux_uart5_pins {
+		pinctrl-single,pins = <
+			/* lcd_d8.uart5_txd */
+			AM33XX_IOPAD(0x8C0, PIN_OUTPUT_PULLDOWN | MUX_MODE4)
+			/* lcd_d9.uart5_rxd */
+			AM33XX_IOPAD(0x8C4, PIN_INPUT_PULLUP | MUX_MODE4)
+			/* mcasp0_aclkr GPIO0[11], OUTPUT_PULLDOWN | MODE7 --> UART5_DE */
+			AM33XX_IOPAD(0x8DC, PIN_OUTPUT_PULLDOWN | MUX_MODE7)
+		>;
+	};
+	dcan0_pins: pinmux_dcan0_pins {
+		pinctrl-single,pins = <
+			/* uart1_ctsn.d_can0_tx */
+			AM33XX_IOPAD(0x978, PIN_OUTPUT_PULLUP | MUX_MODE2)
+			/* uart1_rtsn.d_can0_rx */
+			AM33XX_IOPAD(0x97C, PIN_INPUT_PULLUP | MUX_MODE2)
+		>;
+	};
+	gpmc_pins: pinmux_gpmc_pins {
+		pinctrl-single,pins = <
+			0x0	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad0.gpmc_ad0 */
+			0x4	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad1.gpmc_ad1 */
+			0x8	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad2.gpmc_ad2 */
+			0xc	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad3.gpmc_ad3 */
+			0x10	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad4.gpmc_ad4 */
+			0x14	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad5.gpmc_ad5 */
+			0x18	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad6.gpmc_ad6 */
+			0x1c	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad7.gpmc_ad7 */
+			0x70	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_wait0.gpmc_wait0 */
+			/* 0x74	0x37 */	/* gpmc_wpn.gpio0_30 */
+			0x7c	(PIN_OUTPUT | MUX_MODE0)	/* gpmc_csn0.gpmc_csn0  */
+			0x90	(PIN_OUTPUT | MUX_MODE0)	/* gpmc_advn_ale.gpmc_advn_ale */
+			0x94	(PIN_OUTPUT | MUX_MODE0)	/* gpmc_oen_ren.gpmc_oen_ren */
+			0x98	(PIN_OUTPUT | MUX_MODE0)	/* gpmc_wen.gpmc_wen */
+			0x9c	(PIN_OUTPUT | MUX_MODE0)	/* gpmc_be0n_cle.gpmc_be0n_cle */
+		>;
+	};
+	gpio_helper_pins: pinmux_gpio_helper_pins {
+		pinctrl-single,pins = <
+			AM33XX_IOPAD(0X8BC, PIN_OUTPUT | MUX_MODE7)	/* LCD_D7 GPIO2[13], OUTPUT | MODE7 --> USER LED */
+			AM33XX_IOPAD(0X840, PIN_OUTPUT | MUX_MODE7)	/* GPIO1[16], OUTPUT | MODE7 --> */
+			AM33XX_IOPAD(0X850, PIN_OUTPUT | MUX_MODE7)	/* GPIO1[20], OUTPUT | MODE7 --> */
+		>;
+	};
+	mmc1_pins: pinmux_mmc1_pins {
+		pinctrl-single,pins = <
+			AM33XX_IOPAD(0x9A4, PIN_INPUT | MUX_MODE7) /* GPIO3_19 */
+		>;
+	};
+	/* default state has all gpios released and mode set to uart1 */
+	bb_spi0_pins: pinmux_bb_spi0_pins {
+		pinctrl-single,pins = <
+			0x150 0x30	/* spi0_sclk.spi0_sclk, INPUT_PULLUP | MODE0 */
+			0x154 0x30	/* spi0_d0.spi0_d0, INPUT_PULLUP | MODE0 */
+			0x158 0x10	/* spi0_d1.spi0_d1, OUTPUT_PULLUP | MODE0 */
+			0x15c 0x10	/* spi0_cs0.spi0_cs0, OUTPUT_PULLUP | MODE0 */
+			0x160 0x10	/* spi0_cs0.spi0_cs0, OUTPUT_PULLUP | MODE0 */
+		>;
+	};
+};
