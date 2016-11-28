@@ -17,34 +17,6 @@
 	model = "TI AM335x AGV";
 	compatible = "ti,am335x-agv", "ti,am33xx";
 	
-	leds {
-		pinctrl-names = "default";
-		pinctrl-0 = <&user_leds_s0>;
-
-		compatible = "gpio-leds";
-
-		led@2 {
-			label = "beaglebone:green:usr0";
-			gpios = <&gpio2 23 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "heartbeat";
-			default-state = "off";
-		};
-
-		led@3 {
-			label = "beaglebone:green:usr1";
-			gpios = <&gpio2 22 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "mmc0";
-			default-state = "off";
-		};
-
-		led@4 {
-			label = "beaglebone:green:usr2";
-			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "cpu0";
-			default-state = "off";
-		};
-	};
-	
 	gpio_helper {
 		compatible = "gpio-of-helper";
 		status = "okay";
@@ -219,13 +191,6 @@
 };
 
 &am33xx_pinmux {
-	user_leds_s0: user_leds_s0 {
-		pinctrl-single,pins = <
-			AM33XX_IOPAD(0x8E4, PIN_OUTPUT | MUX_MODE7)	/* gpio2_23 */
-			AM33XX_IOPAD(0x8E0, PIN_OUTPUT | MUX_MODE7)	/* gpio2_22 */
-			AM33XX_IOPAD(0x8EC, PIN_OUTPUT | MUX_MODE7)	/* gpio2_25 */
-		>;
-	};
 	uart1_pins: pinmux_uart1_pins {
 		pinctrl-single,pins = <
 			/* uart1_txd.uart1_txd */
@@ -290,26 +255,16 @@
 	#size-cells = <0>;
 	status = "okay";
 
-	ads1015: ads1015@48 {
-		compatible = "ti,ads1015";
+	ads1115: ads1115@48 {
+		compatible = "ti,ads1115";
 		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x48>;
 		channel@1 {
-			reg = <4>;
+			reg = <0>;
 			ti,gain = <2>;
-			ti,datarate = <2>;
-		};
-		channel@2 {
-			reg = <5>;
-			ti,gain = <2>;
-			ti,datarate = <2>;
-		};
-		channel@3 {
-			reg = <6>;
-			ti,gain = <2>;
-			ti,datarate = <2>;
+			ti,datarate = <2>;		// 32 SPS
 		};
 	};
 };
