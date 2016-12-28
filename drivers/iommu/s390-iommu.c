@@ -49,7 +49,7 @@ static bool s390_iommu_capable(enum iommu_cap cap)
 	}
 }
 
-struct iommu_domain *s390_domain_alloc(unsigned domain_type)
+static struct iommu_domain *s390_domain_alloc(unsigned domain_type)
 {
 	struct s390_domain *s390_domain;
 
@@ -73,7 +73,7 @@ struct iommu_domain *s390_domain_alloc(unsigned domain_type)
 	return &s390_domain->domain;
 }
 
-void s390_domain_free(struct iommu_domain *domain)
+static void s390_domain_free(struct iommu_domain *domain)
 {
 	struct s390_domain *s390_domain = to_s390_domain(domain);
 
@@ -101,8 +101,7 @@ static int s390_iommu_attach_device(struct iommu_domain *domain,
 		zpci_dma_exit_device(zdev);
 
 	zdev->dma_table = s390_domain->dma_table;
-	rc = zpci_register_ioat(zdev, 0, zdev->start_dma + PAGE_OFFSET,
-				zdev->start_dma + zdev->iommu_size - 1,
+	rc = zpci_register_ioat(zdev, 0, zdev->start_dma, zdev->end_dma,
 				(u64) zdev->dma_table);
 	if (rc)
 		goto out_restore;
@@ -216,6 +215,7 @@ static int s390_iommu_update_trans(struct s390_domain *s390_domain,
 	u8 *page_addr = (u8 *) (pa & PAGE_MASK);
 	dma_addr_t start_dma_addr = dma_addr;
 	unsigned long irq_flags, nr_pages, i;
+	unsigned long *entry;
 	int rc = 0;
 
 	if (dma_addr < s390_domain->domain.geometry.aperture_start ||
@@ -228,8 +228,12 @@ static int s390_iommu_update_trans(struct s390_domain *s390_domain,
 
 	spin_lock_irqsave(&s390_domain->dma_table_lock, irq_flags);
 	for (i = 0; i < nr_pages; i++) {
-		dma_update_cpu_trans(s390_domain->dma_table, page_addr,
-				     dma_addr, flags);
+		entry = dma_walk_cpu_trans(s390_domain->dma_table, dma_addr);
+		if (!entry) {
+			rc = -ENOMEM;
+			goto undo_cpu_trans;
+		}
+		dma_update_cpu_trans(entry, page_addr, flags);
 		page_addr += PAGE_SIZE;
 		dma_addr += PAGE_SIZE;
 	}
@@ -242,6 +246,20 @@ static int s390_iommu_update_trans(struct s390_domain *s390_domain,
 			break;
 	}
 	spin_unlock(&s390_domain->list_lock);
+
+undo_cpu_trans:
+	if (rc && ((flags & ZPCI_PTE_VALID_MASK) == ZPCI_PTE_VALID)) {
+		flags = ZPCI_PTE_INVALID;
+		while (i-- > 0) {
+			page_addr -= PAGE_SIZE;
+			dma_addr -= PAGE_SIZE;
+			entry = dma_walk_cpu_trans(s390_domain->dma_table,
+						   dma_addr);
+			if (!entry)
+				break;
+			dma_update_cpu_trans(entry, page_addr, flags);
+		}
+	}
 	spin_unlock_irqrestore(&s390_domain->dma_table_lock, irq_flags);
 
 	return rc;

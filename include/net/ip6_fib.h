@@ -167,7 +167,8 @@ static inline void rt6_update_expires(struct rt6_info *rt0, int timeout)
 
 static inline u32 rt6_get_cookie(const struct rt6_info *rt)
 {
-	if (rt->rt6i_flags & RTF_PCPU || unlikely(rt->dst.flags & DST_NOCACHE))
+	if (rt->rt6i_flags & RTF_PCPU ||
+	    (unlikely(rt->dst.flags & DST_NOCACHE) && rt->dst.from))
 		rt = (struct rt6_info *)(rt->dst.from);
 
 	return rt->rt6i_node ? rt->rt6i_node->fn_sernum : 0;
@@ -229,6 +230,8 @@ struct fib6_table {
 	rwlock_t		tb6_lock;
 	struct fib6_node	tb6_root;
 	struct inet_peer_base	tb6_peers;
+	unsigned int		flags;
+#define RT6_TABLE_HAS_DFLT_ROUTER	BIT(0)
 };
 
 #define RT6_TABLE_UNSPEC	RT_TABLE_UNSPEC

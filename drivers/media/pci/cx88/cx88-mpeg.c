@@ -393,7 +393,8 @@ static int cx8802_init_common(struct cx8802_dev *dev)
 	if (pci_enable_device(dev->pci))
 		return -EIO;
 	pci_set_master(dev->pci);
-	if (!pci_set_dma_mask(dev->pci,DMA_BIT_MASK(32))) {
+	err = pci_set_dma_mask(dev->pci,DMA_BIT_MASK(32));
+	if (err) {
 		printk("%s/2: Oops: no 32bit PCI DMA ???\n",dev->core->name);
 		return -EIO;
 	}
@@ -725,11 +726,6 @@ static int cx8802_probe(struct pci_dev *pci_dev,
 	if (NULL == dev)
 		goto fail_core;
 	dev->pci = pci_dev;
-	dev->alloc_ctx = vb2_dma_sg_init_ctx(&pci_dev->dev);
-	if (IS_ERR(dev->alloc_ctx)) {
-		err = PTR_ERR(dev->alloc_ctx);
-		goto fail_dev;
-	}
 	dev->core = core;
 
 	/* Maintain a reference so cx88-video can query the 8802 device. */
@@ -737,7 +733,7 @@ static int cx8802_probe(struct pci_dev *pci_dev,
 
 	err = cx8802_init_common(dev);
 	if (err != 0)
-		goto fail_free;
+		goto fail_dev;
 
 	INIT_LIST_HEAD(&dev->drvlist);
 	mutex_lock(&cx8802_mutex);
@@ -748,8 +744,6 @@ static int cx8802_probe(struct pci_dev *pci_dev,
 	request_modules(dev);
 	return 0;
 
- fail_free:
-	vb2_dma_sg_cleanup_ctx(dev->alloc_ctx);
  fail_dev:
 	kfree(dev);
  fail_core:
@@ -797,7 +791,6 @@ static void cx8802_remove(struct pci_dev *pci_dev)
 	/* common */
 	cx8802_fini_common(dev);
 	cx88_core_put(dev->core,dev->pci);
-	vb2_dma_sg_cleanup_ctx(dev->alloc_ctx);
 	kfree(dev);
 }
 

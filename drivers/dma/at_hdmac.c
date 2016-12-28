@@ -473,15 +473,11 @@ atc_chain_complete(struct at_dma_chan *atchan, struct at_desc *desc)
 	/* for cyclic transfers,
 	 * no need to replay callback function while stopping */
 	if (!atc_chan_is_cyclic(atchan)) {
-		dma_async_tx_callback	callback = txd->callback;
-		void			*param = txd->callback_param;
-
 		/*
 		 * The API requires that no submissions are done from a
 		 * callback, so we don't need to drop the lock here
 		 */
-		if (callback)
-			callback(param);
+		dmaengine_desc_get_callback_invoke(txd, NULL);
 	}
 
 	dma_run_dependencies(txd);
@@ -598,15 +594,12 @@ static void atc_handle_cyclic(struct at_dma_chan *atchan)
 {
 	struct at_desc			*first = atc_first_active(atchan);
 	struct dma_async_tx_descriptor	*txd = &first->txd;
-	dma_async_tx_callback		callback = txd->callback;
-	void				*param = txd->callback_param;
 
 	dev_vdbg(chan2dev(&atchan->chan_common),
 			"new cyclic period llp 0x%08x\n",
 			channel_readl(atchan, DSCR));
 
-	if (callback)
-		callback(param);
+	dmaengine_desc_get_callback_invoke(txd, NULL);
 }
 
 /*--  IRQ & Tasklet  ---------------------------------------------------*/
@@ -729,8 +722,8 @@ atc_prep_dma_interleaved(struct dma_chan *chan,
 		return NULL;
 
 	dev_info(chan2dev(chan),
-		 "%s: src=0x%08x, dest=0x%08x, numf=%d, frame_size=%d, flags=0x%lx\n",
-		__func__, xt->src_start, xt->dst_start, xt->numf,
+		 "%s: src=%pad, dest=%pad, numf=%d, frame_size=%d, flags=0x%lx\n",
+		__func__, &xt->src_start, &xt->dst_start, xt->numf,
 		xt->frame_size, flags);
 
 	/*
@@ -824,8 +817,8 @@ atc_prep_dma_memcpy(struct dma_chan *chan, dma_addr_t dest, dma_addr_t src,
 	u32			ctrla;
 	u32			ctrlb;
 
-	dev_vdbg(chan2dev(chan), "prep_dma_memcpy: d0x%x s0x%x l0x%zx f0x%lx\n",
-			dest, src, len, flags);
+	dev_vdbg(chan2dev(chan), "prep_dma_memcpy: d%pad s%pad l0x%zx f0x%lx\n",
+			&dest, &src, len, flags);
 
 	if (unlikely(!len)) {
 		dev_dbg(chan2dev(chan), "prep_dma_memcpy: length is zero!\n");
@@ -938,8 +931,8 @@ atc_prep_dma_memset(struct dma_chan *chan, dma_addr_t dest, int value,
 	void __iomem		*vaddr;
 	dma_addr_t		paddr;
 
-	dev_vdbg(chan2dev(chan), "%s: d0x%x v0x%x l0x%zx f0x%lx\n", __func__,
-		dest, value, len, flags);
+	dev_vdbg(chan2dev(chan), "%s: d%pad v0x%x l0x%zx f0x%lx\n", __func__,
+		&dest, value, len, flags);
 
 	if (unlikely(!len)) {
 		dev_dbg(chan2dev(chan), "%s: length is zero!\n", __func__);
@@ -1022,8 +1015,8 @@ atc_prep_dma_memset_sg(struct dma_chan *chan,
 		dma_addr_t dest = sg_dma_address(sg);
 		size_t len = sg_dma_len(sg);
 
-		dev_vdbg(chan2dev(chan), "%s: d0x%08x, l0x%zx\n",
-			 __func__, dest, len);
+		dev_vdbg(chan2dev(chan), "%s: d%pad, l0x%zx\n",
+			 __func__, &dest, len);
 
 		if (!is_dma_fill_aligned(chan->device, dest, 0, len)) {
 			dev_err(chan2dev(chan), "%s: buffer is not aligned\n",
@@ -1439,9 +1432,9 @@ atc_prep_dma_cyclic(struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
 	unsigned int		periods = buf_len / period_len;
 	unsigned int		i;
 
-	dev_vdbg(chan2dev(chan), "prep_dma_cyclic: %s buf@0x%08x - %d (%d/%d)\n",
+	dev_vdbg(chan2dev(chan), "prep_dma_cyclic: %s buf@%pad - %d (%d/%d)\n",
 			direction == DMA_MEM_TO_DEV ? "TO DEVICE" : "FROM DEVICE",
-			buf_addr,
+			&buf_addr,
 			periods, buf_len, period_len);
 
 	if (unlikely(!atslave || !buf_len || !period_len)) {
