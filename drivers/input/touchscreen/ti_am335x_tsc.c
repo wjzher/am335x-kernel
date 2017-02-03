@@ -183,8 +183,8 @@ static void titsc_step_config(struct titsc *ts_dev)
 
 	/* coordinate_readouts + 1 ... coordinate_readouts + 2 is for Z */
 	config = STEPCONFIG_MODE_HWSYNC |
-			STEPCONFIG_AVG_16 | ts_dev->bit_yp |
-			ts_dev->bit_xn | STEPCONFIG_INM_ADCREFM |
+			STEPCONFIG_AVG_16 | STEPCONFIG_YPN |
+			STEPCONFIG_XNP | STEPCONFIG_INM_ADCREFM |
 			STEPCONFIG_INP(ts_dev->inp_xp);
 	titsc_writel(ts_dev, REG_STEPCONFIG(end_step), config);
 	titsc_writel(ts_dev, REG_STEPDELAY(end_step),
