@@ -1,259 +1,216 @@
-/*
- * Intel(R) Trace Hub Software Trace Hub support
- *
- * Copyright (C) 2014-2015 Intel Corporation.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- */
-
-#define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
-
-#include <linux/types.h>
-#include <linux/module.h>
-#include <linux/device.h>
-#include <linux/io.h>
-#include <linux/mm.h>
-#include <linux/slab.h>
-#include <linux/stm.h>
-
-#include "intel_th.h"
-#include "sth.h"
-
-struct sth_device {
-	void __iomem	*base;
-	void __iomem	*channels;
-	phys_addr_t	channels_phys;
-	struct device	*dev;
-	struct stm_data	stm;
-	unsigned int	sw_nmasters;
-};
-
-static struct intel_th_channel __iomem *
-sth_channel(struct sth_device *sth, unsigned int master, unsigned int channel)
-{
-	struct intel_th_channel __iomem *sw_map = sth->channels;
-
-	return &sw_map[(master - sth->stm.sw_start) * sth->stm.sw_nchannels +
-		       channel];
-}
-
-static void sth_iowrite(void __iomem *dest, const unsigned char *payload,
-			unsigned int size)
-{
-	switch (size) {
-#ifdef CONFIG_64BIT
-	case 8:
-		writeq_relaxed(*(u64 *)payload, dest);
-		break;
+4, 130, /* mcs15 */
+#else
+    14, 0x20, 14,  8,  18,  13,   21,   15,   14, 117, /* mcs14 */
+    15, 0x20, 15,  8,  14,  14,   21,   15,   15, 130, /* mcs15 */
 #endif
-	case 4:
-		writel_relaxed(*(u32 *)payload, dest);
-		break;
-	case 2:
-		writew_relaxed(*(u16 *)payload, dest);
-		break;
-	case 1:
-		writeb_relaxed(*(u8 *)payload, dest);
-		break;
-	default:
-		break;
-	}
-}
+    16, 0x20, 16, 30,  50,   8,   17,    9,    3,  20, /* mcs16 */
+    17, 0x20, 17, 20,  50,  16,   18,   11,    5,  39, /* mcs17 */
+    18, 0x20, 18, 20,  40,  17,   19,   12,    7,  59, /* mcs18 */
+    19, 0x20, 19, 15,  30,  18,   20,   13,   19,  78, /* mcs19 */
+    20, 0x20, 20, 15,  30,  19,   21,   15,   20, 117, /* mcs20 */
+#ifdef SUPPORT_SHORT_GI_RA
+    21, 0x20, 21,  8,  20,  20,   22, sg21,   21, 156, /* mcs21 */
+    22, 0x20, 22,  8,  20,  21,   23, sg22, sg21, 176, /* mcs22 */
+    23, 0x20, 23,  6,  18,  22, sg23,   23, sg22, 195, /* mcs23 */
+    24, 0x22, 23,  6,  14,  23, sg23, sg23, sg23, 217, /* mcs23+shortGI */
 
-static ssize_t sth_stm_packet(struct stm_data *stm_data, unsigned int master,
-			      unsigned int channel, unsigned int packet,
-			      unsigned int flags, unsigned int size,
-			      const unsigned char *payload)
-{
-	struct sth_device *sth = container_of(stm_data, struct sth_device, stm);
-	struct intel_th_channel __iomem *out =
-		sth_channel(sth, master, channel);
-	u64 __iomem *outp = &out->Dn;
-	unsigned long reg = REG_STH_TRIG;
-
-#ifndef CONFIG_64BIT
-	if (size > 4)
-		size = 4;
+    25, 0x22, 21,  6,  18,  21, sg22,   22, sg21, 173, /* mcs21+shortGI */
+    26, 0x22, 22,  6,  18,  22, sg23,   23, sg22, 195, /* mcs22+shortGI */
+    27, 0x22, 14,  8,  14,  14,   21, sg15,   15, 130, /* mcs14+shortGI */
+    28, 0x22, 15,  8,  14,  15,   21, sg15, sg15, 144, /* mcs15+shortGI */
+    29, 0x23,  7,  8,  14,   7,   19,   12,   29,  72, /* mcs7+shortGI */
+#else
+    21, 0x20, 21,  8,  20,  20,   22,   21,   21, 156, /* mcs21 */
+    22, 0x20, 22,  8,  20,  21,   23,   22,   22, 176, /* mcs22 */
+    23, 0x20, 23,  6,  18,  22,   24,   23,   23, 195, /* mcs23 */
+    24, 0x22, 23,  6,  14,  23,   24,   24,   24, 217, /* mcs23+shortGI */
+    25,    0,  0,  0,   0,   0,   0,     0,    0,   0,
+    26,    0,  0,  0,   0,   0,   0,     0,    0,   0,
+    27,    0,  0,  0,   0,   0,   0,     0,    0,   0,
+    28,    0,  0,  0,   0,   0,   0,     0,    0,   0,
+    29,    0,  0,  0,   0,   0,   0,     0,    0,   0,
 #endif
-
-	size = rounddown_pow_of_two(size);
-
-	switch (packet) {
-	/* Global packets (GERR, XSYNC, TRIG) are sent with register writes */
-	case STP_PACKET_GERR:
-		reg += 4;
-	case STP_PACKET_XSYNC:
-		reg += 8;
-	case STP_PACKET_TRIG:
-		if (flags & STP_PACKET_TIMESTAMPED)
-			reg += 4;
-		iowrite8(*payload, sth->base + reg);
-		break;
-
-	case STP_PACKET_MERR:
-		sth_iowrite(&out->MERR, payload, size);
-		break;
-
-	case STP_PACKET_FLAG:
-		if (flags & STP_PACKET_TIMESTAMPED)
-			outp = (u64 __iomem *)&out->FLAG_TS;
-		else
-			outp = (u64 __iomem *)&out->FLAG;
-
-		size = 1;
-		sth_iowrite(outp, payload, size);
-		break;
-
-	case STP_PACKET_USER:
-		if (flags & STP_PACKET_TIMESTAMPED)
-			outp = &out->USER_TS;
-		else
-			outp = &out->USER;
-		sth_iowrite(outp, payload, size);
-		break;
-
-	case STP_PACKET_DATA:
-		outp = &out->Dn;
-
-		if (flags & STP_PACKET_TIMESTAMPED)
-			outp += 2;
-		if (flags & STP_PACKET_MARKED)
-			outp++;
-
-		sth_iowrite(outp, payload, size);
-		break;
-	}
-
-	return size;
-}
-
-static phys_addr_t
-sth_stm_mmio_addr(struct stm_data *stm_data, unsigned int master,
-		  unsigned int channel, unsigned int nr_chans)
-{
-	struct sth_device *sth = container_of(stm_data, struct sth_device, stm);
-	phys_addr_t addr;
-
-	master -= sth->stm.sw_start;
-	addr = sth->channels_phys + (master * sth->stm.sw_nchannels + channel) *
-		sizeof(struct intel_th_channel);
-
-	if (offset_in_page(addr) ||
-	    offset_in_page(nr_chans * sizeof(struct intel_th_channel)))
-		return 0;
-
-	return addr;
-}
-
-static int sth_stm_link(struct stm_data *stm_data, unsigned int master,
-			 unsigned int channel)
-{
-	struct sth_device *sth = container_of(stm_data, struct sth_device, stm);
-
-	intel_th_set_output(to_intel_th_device(sth->dev), master);
-
-	return 0;
-}
-
-static int intel_th_sw_init(struct sth_device *sth)
-{
-	u32 reg;
-
-	reg = ioread32(sth->base + REG_STH_STHCAP1);
-	sth->stm.sw_nchannels = reg & 0xff;
-
-	reg = ioread32(sth->base + REG_STH_STHCAP0);
-	sth->stm.sw_start = reg & 0xffff;
-	sth->stm.sw_end = reg >> 16;
-
-	sth->sw_nmasters = sth->stm.sw_end - sth->stm.sw_start;
-	dev_dbg(sth->dev, "sw_start: %x sw_end: %x masters: %x nchannels: %x\n",
-		sth->stm.sw_start, sth->stm.sw_end, sth->sw_nmasters,
-		sth->stm.sw_nchannels);
-
-	return 0;
-}
-
-static int intel_th_sth_probe(struct intel_th_device *thdev)
-{
-	struct device *dev = &thdev->dev;
-	struct sth_device *sth;
-	struct resource *res;
-	void __iomem *base, *channels;
-	int err;
-
-	res = intel_th_device_get_resource(thdev, IORESOURCE_MEM, 0);
-	if (!res)
-		return -ENODEV;
-
-	base = devm_ioremap(dev, res->start, resource_size(res));
-	if (!base)
-		return -ENOMEM;
-
-	res = intel_th_device_get_resource(thdev, IORESOURCE_MEM, 1);
-	if (!res)
-		return -ENODEV;
-
-	channels = devm_ioremap(dev, res->start, resource_size(res));
-	if (!channels)
-		return -ENOMEM;
-
-	sth = devm_kzalloc(dev, sizeof(*sth), GFP_KERNEL);
-	if (!sth)
-		return -ENOMEM;
-
-	sth->dev = dev;
-	sth->base = base;
-	sth->channels = channels;
-	sth->channels_phys = res->start;
-	sth->stm.name = dev_name(dev);
-	sth->stm.packet = sth_stm_packet;
-	sth->stm.mmio_addr = sth_stm_mmio_addr;
-	sth->stm.sw_mmiosz = sizeof(struct intel_th_channel);
-	sth->stm.link = sth_stm_link;
-
-	err = intel_th_sw_init(sth);
-	if (err)
-		return err;
-
-	err = stm_register_device(dev, &sth->stm, THIS_MODULE);
-	if (err) {
-		dev_err(dev, "stm_register_device failed\n");
-		return err;
-	}
-
-	dev_set_drvdata(dev, sth);
-
-	return 0;
-}
-
-static void intel_th_sth_remove(struct intel_th_device *thdev)
-{
-	struct sth_device *sth = dev_get_drvdata(&thdev->dev);
-
-	stm_unregister_device(&sth->stm);
-}
-
-static struct intel_th_driver intel_th_sth_driver = {
-	.probe	= intel_th_sth_probe,
-	.remove	= intel_th_sth_remove,
-	.driver	= {
-		.name	= "sth",
-		.owner	= THIS_MODULE,
-	},
+    30, 0x00,  0, 40,  101, 30 ,  30,    30,   31,  1, /* cck-1M */
+    31, 0x00,  1, 40,  50,  30,   31,    31,   32,  2, /* cck-2M */
+    32, 0x21, 32, 30,  50,  31,   0,     8,    0,   7, /* mcs32 or 20M/mcs0 */
 };
+#endif /*  NEW_RATE_ADAPT_SUPPORT */
 
-module_driver(intel_th_sth_driver,
-	      intel_th_driver_register,
-	      intel_th_driver_unregister);
+#endif /* DOT11_N_SUPPORT */
 
-MODULE_LICENSE("GPL v2");
-MODULE_DESCRIPTION("Intel(R) Trace Hub Software Trace Hub driver");
-MODULE_AUTHOR("Alexander Shishkin <alexander.shishkin@intel.com>");
+
+/* MlmeGetSupportedMcs - fills in the table of mcs with index into the pTable
+		pAd - pointer to adapter
+		pTable - pointer to the Rate Table. Assumed to be a table without mcsGroup values
+		mcs - table of MCS index into the Rate Table. -1 => not supported
+*/
+VOID MlmeGetSupportedMcs(
+	IN PRTMP_ADAPTER pAd,
+	IN UCHAR	*pTable,
+	OUT CHAR 	mcs[])
+{
+	CHAR	idx;
+	PRTMP_TX_RATE_SWITCH pCurrTxRate;
+
+	for (idx=0; idx<24; idx++)
+		mcs[idx] = -1;
+
+	/*  check the existence and index of each needed MCS */
+	for (idx=0; idx<RATE_TABLE_SIZE(pTable); idx++)
+	{
+		pCurrTxRate = PTX_RATE_SWITCH_ENTRY(pTable, idx);
+
+		/*  Rate Table may contain CCK and MCS rates. Give HT/Legacy priority over CCK */
+		if (pCurrTxRate->CurrMCS==MCS_0 && (mcs[0]==-1 || pCurrTxRate->Mode!=MODE_CCK))
+		{
+			mcs[0] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS==MCS_1 && (mcs[1]==-1 || pCurrTxRate->Mode!=MODE_CCK))
+		{
+			mcs[1] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS==MCS_2 && (mcs[2]==-1 || pCurrTxRate->Mode!=MODE_CCK))
+		{
+			mcs[2] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_3)
+		{
+			mcs[3] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_4)
+		{
+			mcs[4] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_5)
+		{
+			mcs[5] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_6)
+		{
+			mcs[6] = idx;
+		}
+		else if ((pCurrTxRate->CurrMCS == MCS_7) && (pCurrTxRate->ShortGI == GI_800))
+		{
+			mcs[7] = idx;
+		}
+#ifdef DOT11_N_SUPPORT
+		else if (pCurrTxRate->CurrMCS == MCS_12)
+		{
+			mcs[12] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_13)
+		{
+			mcs[13] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_14)
+		{
+			mcs[14] = idx;
+		}
+		else if ((pCurrTxRate->CurrMCS == MCS_15) && (pCurrTxRate->ShortGI == GI_800))
+		{
+			mcs[15] = idx;
+		}
+#ifdef DOT11N_SS3_SUPPORT
+		else if (pCurrTxRate->CurrMCS == MCS_20)
+		{
+			mcs[20] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_21)
+		{
+			mcs[21] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_22)
+		{
+			mcs[22] = idx;
+		}
+		else if (pCurrTxRate->CurrMCS == MCS_23)
+		{
+			mcs[23] = idx;
+		}
+#endif /*  DOT11N_SS3_SUPPORT */
+#endif /*  DOT11_N_SUPPORT */
+	}
+
+#ifdef DBG_CTRL_SUPPORT
+	/*  Debug Option: Disable highest MCSs when picking initial MCS based on RSSI */
+	if (pAd->CommonCfg.DebugFlags & DBF_INIT_MCS_DIS1)
+		mcs[23] = mcs[15] = mcs[7] = mcs[22] = mcs[14] = mcs[6] = 0;
+#endif /* DBG_CTRL_SUPPORT */
+}
+
+
+
+/*  MlmeClearTxQuality - Clear TxQuality history only for the active BF state */
+VOID MlmeClearTxQuality(
+	IN MAC_TABLE_ENTRY	*pEntry)
+{
+		NdisZeroMemory(pEntry->TxQuality, sizeof(pEntry->TxQuality));
+
+	NdisZeroMemory(pEntry->PER, sizeof(pEntry->PER));
+}
+
+/*  MlmeClearAllTxQuality - Clear both BF and non-BF TxQuality history */
+VOID MlmeClearAllTxQuality(
+	IN MAC_TABLE_ENTRY	*pEntry)
+{
+	NdisZeroMemory(pEntry->TxQuality, sizeof(pEntry->TxQuality));
+
+	NdisZeroMemory(pEntry->PER, sizeof(pEntry->PER));
+}
+
+/*  MlmeDecTxQuality - Decrement TxQuality of specified rate table entry */
+VOID MlmeDecTxQuality(
+	IN MAC_TABLE_ENTRY	*pEntry,
+	IN UCHAR			rateIndex)
+{
+	if (pEntry->TxQuality[rateIndex])
+		pEntry->TxQuality[rateIndex]--;
+}
+
+VOID MlmeSetTxQuality(
+	IN MAC_TABLE_ENTRY	*pEntry,
+	IN UCHAR			rateIndex,
+	IN USHORT			txQuality)
+{
+		pEntry->TxQuality[rateIndex] = txQuality;
+}
+
+
+USHORT MlmeGetTxQuality(
+	IN MAC_TABLE_ENTRY	*pEntry,
+	IN UCHAR			rateIndex)
+{
+	return pEntry->TxQuality[rateIndex];
+}
+
+
+
+
+#ifdef CONFIG_STA_SUPPORT
+VOID MlmeSetTxRate(
+	IN PRTMP_ADAPTER		pAd,
+	IN PMAC_TABLE_ENTRY		pEntry,
+	IN PRTMP_TX_RATE_SWITCH	pTxRate)
+{
+	UCHAR	MaxMode = MODE_OFDM;
+
+#ifdef DOT11_N_SUPPORT
+	MaxMode = MODE_HTGREENFIELD;
+
+	if (pTxRate->STBC && (pAd->StaCfg.MaxHTPhyMode.field.STBC))
+		pAd->StaCfg.HTPhyMode.field.STBC = STBC_USE;
+	else
+#endif /*  DOT11_N_SUPPORT */
+		pAd->StaCfg.HTPhyMode.field.STBC = STBC_NONE;
+
+	if (pTxRate->CurrMCS < MCS_AUTO)
+		pAd->StaCfg.HTPhyMode.field.MCS = pTxRate->CurrMCS;
+
+	if (pAd->StaCfg.HTPhyMode.field.MCS > 7)
+		pAd->StaCfg.HTPhyMode.field.STBC = STBC_NONE;
+
+   	if (ADHOC_ON(pAd))
+	{
+		/*  If peer adhoc is b-only mode, we can't send 11g rate. */
+		pAd->StaCfg.HTPhyMode.field.ShortGI = GI_800;
+		pEntr
