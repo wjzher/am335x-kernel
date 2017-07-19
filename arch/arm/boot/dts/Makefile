@@ -475,6 +475,7 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-boneblack-cape-bone-argus.dtb \
 	am335x-bone-cape-bone-argus.dtb \
 	am335x-agv-v2.dtb \
+	am335x-forklift.dtb \
 	am335x-sagv-v2.dtb \
 	am335x-rtoc.dtb \
 	am335x-arduino-tre.dtb \
