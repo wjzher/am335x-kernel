@@ -262,5 +262,10 @@
 			ti,gain = <2>;
 			ti,datarate = <2>;		// 32 SPS
 		};
+		channel@2 {
+			reg = <3>;
+			ti,gain = <1>;
+			ti,datarate = <2>;		// 32 SPS
+		};
 	};
 };
