@@ -485,6 +485,8 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-boneblack-hdmi-overlay.dtb \
 	am335x-boneblack-emmc-overlay.dtb \
 	am335x-bonegreen.dtb \
+	am335x-agv-v2.dtb \
+	am335x-forklift.dtb \
 	am335x-sl50.dtb \
 	am335x-evm.dtb \
 	am335x-evmsk.dtb \

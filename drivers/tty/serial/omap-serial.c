@@ -847,6 +847,7 @@ serial_omap_set_termios(struct uart_port *port, struct ktermios *termios,
 	unsigned char cval = 0;
 	unsigned long flags = 0;
 	unsigned int baud, quot;
+	int irda = termios->c_lflag & 0x20000;
 
 	switch (termios->c_cflag & CSIZE) {
 	case CS5:
@@ -872,6 +873,10 @@ serial_omap_set_termios(struct uart_port *port, struct ktermios *termios,
 		cval |= UART_LCR_EPAR;
 	if (termios->c_cflag & CMSPAR)
 		cval |= UART_LCR_SPAR;
+
+	if (irda) {
+		cval = UART_LCR_WLEN8;
+	}
 
 	/*
 	 * Ask the core to calculate the divisor for us.
@@ -1029,6 +1034,13 @@ serial_omap_set_termios(struct uart_port *port, struct ktermios *termios,
 		serial_omap_mdr1_errataset(up, up->mdr1);
 	else
 		serial_out(up, UART_OMAP_MDR1, up->mdr1);
+
+	if (irda) {
+		/* allow pulse sharping in UART mode */
+		serial_out(up, UART_OMAP_MDR2, (1 << 3));
+		/* sir pulse width 3/16 */
+		serial_out(up, (0x3c >> 2), 0);
+	}
 
 	/* Configure flow control */
 	serial_out(up, UART_LCR, UART_LCR_CONF_MODE_B);
