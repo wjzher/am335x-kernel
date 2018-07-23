@@ -489,6 +489,8 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-agv-v2.dtb \
 	am335x-agv-v2-nand-1g.dtb \
 	am335x-forklift.dtb \
+	am335x-forklift-nand-1g.dtb \
+	am335x-forklift-mag-nand-1g.dtb \
 	am335x-sl50.dtb \
 	am335x-evm.dtb \
 	am335x-evmsk.dtb \

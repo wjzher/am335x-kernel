@@ -51,6 +51,12 @@
 	linux,rs485-enabled-at-boot-time;
 };
 
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_pins>;
+	status = "okay";
+};
+
 &elm {
 	status = "okay";
 };
@@ -63,7 +69,7 @@
 			 <1 0 0x10000000 0x1000000>;	/* CS1: 16MB for fpga */
 	nand@0,0 {
 		reg = <0 0 4>; /* CS0, offset 0, IO size 4 */
-		ti,nand-ecc-opt = "bch8";
+		ti,nand-ecc-opt = "bch16";
 		ti,elm-id = <&elm>;
 		nand-bus-width = <8>;
 		gpmc,device-width = <1>;
@@ -98,43 +104,43 @@
 		#size-cells = <1>;
 		partition@0 {
 			label = "NAND.SPL";
-			reg = <0x00000000 0x000020000>;		/* offset, size */
+			reg = <0x00000000 0x000080000>;		/* offset, size */
 		};
 		partition@1 {
 			label = "NAND.SPL.backup1";
-			reg = <0x00020000 0x00020000>;
+			reg = <0x00080000 0x00080000>;
 		};
 		partition@2 {
 			label = "NAND.SPL.backup2";
-			reg = <0x00040000 0x00020000>;
+			reg = <0x00100000 0x00080000>;
 		};
 		partition@3 {
 			label = "NAND.SPL.backup3";
-			reg = <0x00060000 0x00020000>;
+			reg = <0x00180000 0x00080000>;
 		};
 		partition@4 {
 			label = "NAND.u-boot-spl-os";
-			reg = <0x00080000 0x00040000>;
+			reg = <0x00200000 0x00080000>;
 		};
 		partition@5 {
 			label = "NAND.u-boot";
-			reg = <0x000C0000 0x00100000>;
+			reg = <0x00280000 0x00100000>;
 		};
 		partition@6 {
 			label = "NAND.u-boot-env";
-			reg = <0x001C0000 0x00020000>;
+			reg = <0x00380000 0x00080000>;
 		};
 		partition@7 {
 			label = "NAND.u-boot-env.backup1";
-			reg = <0x001E0000 0x00020000>;
+			reg = <0x00400000 0x00080000>;
 		};
 		partition@8 {
 			label = "NAND.kernel";
-			reg = <0x00200000 0x00800000>;
+			reg = <0x00480000 0x00A00000>;
 		};
 		partition@9 {
 			label = "NAND.file-system";
-			reg = <0x00A00000 0x0F600000>;
+			reg = <0x00e80000 0x3F180000>;
 		};
 	};
 	fpga@1,0 {
@@ -188,6 +194,14 @@
 			AM33XX_IOPAD(0x9A0, PIN_OUTPUT_PULLDOWN | MUX_MODE7)
 		>;
 	};
+	uart4_pins: pinmux_uart4_pins {
+		pinctrl-single,pins = <
+			/* uart0_rtsn.uart4_txd */
+			AM33XX_IOPAD(0x96C, PIN_OUTPUT_PULLDOWN | MUX_MODE1)
+			/* uart0_ctsn.uart4_rxd */
+			AM33XX_IOPAD(0x968, PIN_INPUT_PULLUP | MUX_MODE1)
+		>;
+	};
 	gpmc_pins: pinmux_gpmc_pins {
 		pinctrl-single,pins = <
 			0x0	(PIN_INPUT_PULLUP | MUX_MODE0)	/* gpmc_ad0.gpmc_ad0 */
@@ -239,7 +253,7 @@
 	#size-cells = <0>;
 	status = "okay";
 
-	ads1115: ads1115@48 {
+	ads1115_1: ads1115@48 {
 		compatible = "ti,ads1115";
 		status = "okay";
 		#address-cells = <1>;
@@ -248,6 +262,23 @@
 		channel@1 {
 			reg = <0>;
 			ti,gain = <2>;
+			ti,datarate = <2>;		// 32 SPS
+		};
+		channel@2 {
+			reg = <3>;
+			ti,gain = <1>;
+			ti,datarate = <2>;		// 32 SPS
+		};
+	};
+	ads1115_2: ads1115@49 {
+		compatible = "ti,ads1115";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x49>;
+		channel@1 {
+			reg = <0>;
+			ti,gain = <1>;
 			ti,datarate = <2>;		// 32 SPS
 		};
 		channel@2 {
