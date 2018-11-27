@@ -16,28 +16,7 @@
 / {
 	model = "TI AM335x AGV";
 	compatible = "ti,am335x-agv", "ti,am33xx";
-	
-	gpio_helper {
-		compatible = "gpio-of-helper";
-		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&gpio_helper_pins>;
 
-		/* declare your gpios */
-		test_led {
-			gpio-name = "test_led";
-			gpio = <&gpio1 27 0x00>;	/* gpio2 is gpio1, active_low = 0 */
-			output;
-			init-high;
-		};
-		fan_power_en {
-			gpio-name = "fan_power_en";
-			gpio = <&gpio3 20 0x00>;		/* gpio4 is gpio3, active_low = 0 */
-			output;
-			init-low;
-		};
-	};
-	
 };
 
 &ldo3_reg {
@@ -47,13 +26,7 @@
 };
 
 &mmc1 {
-	status = "okay";
-	bus-width = <0x4>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&mmc1_pins>;
 	vmmc-supply = <&vmmcsd_fixed>;
-	cd-gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;
-	cd-inverted;
 };
 
 &uart1 {
@@ -82,26 +55,10 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart5_pins>;
 	status = "okay";
-	rts-gpio = <&gpio3 21 GPIO_ACTIVE_HIGH>;
-	rs485-rts-active-high;
-	rs485-rts-delay = <0 0>;
-	linux,rs485-enabled-at-boot-time;
 };
 
 &elm {
 	status = "okay";
-};
-
-&dcan0 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&dcan0_pins>;
-};
-
-&dcan1 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&dcan1_pins>;
 };
 
 &gpmc {
@@ -229,8 +186,10 @@
 	};
 	uart3_pins: pinmux_uart3_pins {
 		pinctrl-single,pins = <
-			0x160 0x31	/* spi0_cs1, MODE1 | PULLUP_EN | RXACTIVE */
-			0x164 0x01	/* lcd_enbkl eCAP0_in_PWM0_out, MODE1 */
+			/* lcd_enbkl(eCAP0_in_PWM0_out).uart3_txd */
+			AM33XX_IOPAD(0x964, PIN_OUTPUT_PULLDOWN | MUX_MODE1)
+			/* spi0_cs1.uart3_rxd */
+			AM33XX_IOPAD(0x960, PIN_INPUT_PULLUP | MUX_MODE1)
 			/* mcasp0_aclkr GPIO3[18], OUTPUT_PULLDOWN | MODE7 --> UART3_DE */
 			AM33XX_IOPAD(0x9A0, PIN_OUTPUT_PULLDOWN | MUX_MODE7)
 		>;
@@ -239,7 +198,6 @@
 		pinctrl-single,pins = <
 			0xC0 0x04	/* lcd_data8, MODE4 | PULLUP_EN | RXACTIVE */
 			0xC4 0x34	/* lcd_data9, MODE4 */
-			0x1ac 0x17	/* mcasp0_ahclkx GPIO3[21], OUTPUT_PULLUP | MODE7 */
 		>;
 	};
 	gpmc_pins: pinmux_gpmc_pins {
@@ -280,29 +238,40 @@
 			/*0x60	0x08	 gpmc_a8.gpmc_a8 MODE0 */
 		>;
 	};
-	mmc1_pins: pinmux_mmc1_pins {
-		pinctrl-single,pins = <
-			0x1A4 0x2f /* GPIO3_19 (PIN_INPUT | MUX_MODE7) */
-		>;
-	};
-	gpio_helper_pins: pinmux_gpio_helper_pins {
-		pinctrl-single,pins = <
-			0x6c 0x17	/* GPMC_A11 GPIO1[27], OUTPUT_PULLUP | MODE7 */
-			0x1A8 0x17	/* mcasp0_axr1 GPIO3[20], OUTPUT_PULLUP | MODE7 */
-			0x1B0 0x2f /* GPIO0_19 (PIN_INPUT | MUX_MODE7) */
-		>;
-	};
 	dcan0_pins: pinmux_dcan0_pins {
 		pinctrl-single,pins = <
 			0x178 0x12 	/* uart1_ctsn, SLEWCTRL_FAST | INPUT_PULLUP | MODE2 | TX */
 			0x17c 0x32	/* uart1_rtsn, SLEWCTRL_FAST | RECV_ENABLE | INPUT_PULLUP | MODE2 | RX */
 		>;
 	};
-	dcan1_pins: pinmux_dcan1_pins {
-		pinctrl-single,pins = <
-			0x168 0x12 	/* uart0_ctsn, SLEWCTRL_FAST | INPUT_PULLUP | MODE2 | TX */
-			0x16c 0x32	/* uart0_rtsn, SLEWCTRL_FAST | RECV_ENABLE | INPUT_PULLUP | MODE2 | RX */
-		>;
+};
+
+&i2c0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	ads1115: ads1115@48 {
+		compatible = "ti,ads1115";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x48>;
+		channel@1 {
+			reg = <0>;
+			ti,gain = <2>;
+			ti,datarate = <2>;		// 32 SPS
+		};
+		channel@2 {
+			reg = <3>;
+			ti,gain = <1>;
+			ti,datarate = <2>;		// 32 SPS
+		};
 	};
 };
 
+&dcan0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&dcan0_pins>;
+};

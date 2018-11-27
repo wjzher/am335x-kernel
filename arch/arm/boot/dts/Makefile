@@ -488,6 +488,8 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-agv.dtb \
 	am335x-agv-v2.dtb \
 	am335x-agv-v2-nand-1g.dtb \
+	am335x-agv-controller.dtb \
+	am335x-agv-controller-v21-nand-1g.dtb \
 	am335x-forklift.dtb \
 	am335x-forklift-nand-1g.dtb \
 	am335x-forklift-nand-1g-v2.dtb \
