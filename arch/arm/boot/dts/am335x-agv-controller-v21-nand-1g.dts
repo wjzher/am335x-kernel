@@ -327,7 +327,7 @@
 	pinctrl-0 = <&i2c1_pins>;
 
 	status = "okay";
-	clock-frequency = <100000>;
+	clock-frequency = <10000>;
 };
 
 &dcan0 {
